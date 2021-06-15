@@ -19,11 +19,6 @@
     #define NUM_POLICIES 5
     #define MAX_THREADS 16
 
-    // Include PAPI for performance counter monitoring
-    #ifdef PAPI_PERF_CNTRS
-        #include "PapiHelper.h"
-    #endif //end PAPI_PERF_CNTRS
-
 #endif //end APOLLO
 
 
@@ -43,27 +38,10 @@
 // for each feature/policy combination
 #define NUM_REVISITS 5
 
-#ifdef PAPI_PERF_CNTRS
-    #define NUMEVENTS 3
-    std::string events[NUMEVENTS] = {"PAPI_L1_TCM", 
-                                     "PAPI_L2_TCM",
-                                     "PAPI_L3_TCM"};
-#endif 
-
-#ifdef CALI_PERF_CNTRS
-    #include "caliper/cali.h"
-
-    cali_id_t thread_id_attr    = CALI_INV_ID;
-    cali_id_t num_threads_attr  = CALI_INV_ID;
-    cali_id_t problem_size_attr = CALI_INV_ID;
-#endif
-
 // Let's write an OpenMP matrix-vector multiplication kernel
 // We assume an MxN matrix and Nx1 vector as inputs, and an Mx1 vector as output
 // We vary the value of M from 1 to a large power of two 
 #ifdef APOLLO
-//#ifdef PAPI_PERF_CNTRS
-//PapiHelper* mulMV(double* mat, double* vec, double* out, const int m, const int n){
 void mulMV(double* mat, double* vec, double* out, const int m, const int n, Apollo::Region* r){
 #else
 void mulMV(double* mat, double* vec, double* out, const int m, const int n){
@@ -72,30 +50,9 @@ void mulMV(double* mat, double* vec, double* out, const int m, const int n){
     
     int i,j;
 
-    #ifdef PAPI_PERF_CNTRS
-        // Create the PAPI Helper object
-        PapiHelper *ph = new PapiHelper(0, NUMEVENTS, events, m);
-    #endif
-
-#ifdef CALI_PERF_CNTRS
-#endif
-
     // Make our parallel region
     #pragma omp parallel 
     { 
-
-    #ifdef CALI_PERF_CNTRS
-        cali_set_int(problem_size_attr, m);
-        cali_set_int(thread_id_attr, omp_get_thread_num());
-        cali_set_int(num_threads_attr, omp_get_max_threads());
-        CALI_MARK_BEGIN("parallel");
-    #endif
-
-    #ifdef PAPI_PERF_CNTRS
-        // Setup this thread
-        ph->setupThread();
-        ph->startThreadRead();
-    #endif
 
     #ifdef APOLLO
         r->apolloThreadBegin();
@@ -113,23 +70,9 @@ void mulMV(double* mat, double* vec, double* out, const int m, const int n){
         r->apolloThreadEnd();
     #endif
 
-    #ifdef PAPI_PERF_CNTRS
-        ph->stopThreadRead();
-        ph->destroyThread();
-        //#pragma omp barrier
-    #endif
-
-    #ifdef CALI_PERF_CNTRS
-        CALI_MARK_END("parallel");
-    #endif
-
     } // end of omp parallel region
 
     //fprintf(stdout, "Completed one MULMV call!\n");
-    // Return the papihelper object to destory after timing measurements
-    #ifdef PAPI_PERF_CNTRS
-        return ph;
-    #endif
 }
 
 void resetMemory(double* mat, double* vec, double* out, int nrows, int ncols){
@@ -183,19 +126,6 @@ int main(int argc, char** argv){
     fprintf(stdout, "numThreads,numRows,time(s)\n");
 #endif
 
-#ifdef CALI_PERF_CNTRS
-
-    cali_config_set("CALI_SERVICES_ENABLE", "event,trace,papi,report");
-    cali_config_set("CALI_PAPI_COUNTERS", "PAPI_L1_TCM,PAPI_L2_TCM,PAPI_L3_TCM");
-    cali_config_set("CALI_CALIPER_ATTRIBUTE_DEFAULT_SCOPE", "thread");
-    cali_config_set("CALI_REPORT_FILENAME", "caliData.csv");
-
-    num_threads_attr  = cali_create_attribute("num_threads",  CALI_TYPE_INT, CALI_ATTR_SCOPE_THREAD | CALI_ATTR_SKIP_EVENTS);
-    thread_id_attr    = cali_create_attribute("thread_id",    CALI_TYPE_INT, CALI_ATTR_SCOPE_THREAD | CALI_ATTR_SKIP_EVENTS);
-    problem_size_attr = cali_create_attribute("problem_size", CALI_TYPE_INT, CALI_ATTR_SCOPE_THREAD | CALI_ATTR_SKIP_EVENTS);
-    
-#endif
-
     // We want to re-do runs to average out our time readings
     for(int visitCount = 1; visitCount <= NUM_REVISITS; visitCount++){
         // Increase the row counts on each iteration
@@ -245,12 +175,6 @@ int main(int argc, char** argv){
             // End the apollo region
             r->end();
             //goto prematureExit;
-
-            #ifdef PAPI_PERF_CNTRS
-                // destructor gets called and we write out the counter
-                // values after ending the Apollo region that gets timed
-                delete ph;
-            #endif
     #endif
 
     // Here is where we will sweep through all the thread counts
