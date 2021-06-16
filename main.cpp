@@ -38,6 +38,11 @@
 // for each feature/policy combination
 #define NUM_REVISITS 5
 
+// This will be the memory we go through to 
+// fill the caches that isn't relevant to computation
+#define THROWAWAY_MEM 16777216
+double* throwaway;
+
 // Let's write an OpenMP matrix-vector multiplication kernel
 // We assume an MxN matrix and Nx1 vector as inputs, and an Mx1 vector as output
 // We vary the value of M from 1 to a large power of two 
@@ -91,6 +96,11 @@ void resetMemory(double* mat, double* vec, double* out, int nrows, int ncols){
         out[i] = 0;
     }
 
+    // Fill up the caches with this throwaway memory
+    for(i = 0; i < THROWAWAY_MEM; ++i){
+        throwaway[i] = 0;
+    }
+
     return;
 }
 
@@ -105,38 +115,25 @@ void showResult(double* out, int nrows){
     fprintf(stdout, "%g]\n", out[j]);
 }
 
-int main(int argc, char** argv){
-
-
-
-    // Let's allocate memory to start
-    double* mat = (double*) malloc(sizeof(double)*MAX_ROWS*NCOLS);
-    double* vec = (double*) malloc(sizeof(double)*NCOLS);
-    double* out = (double*) malloc(sizeof(double)*MAX_ROWS);
-
 #ifdef APOLLO
-    // Setup Apollo
-    Apollo *apollo = Apollo::instance();
-    Apollo::Region *r = new Apollo::Region(NUM_FEATURES, "test-region", NUM_POLICIES);
+void trainRegion(double* mat, double* vec, double* out, Apollo::Region* r){
 
-#endif // end APOLLO 
+    int trainSet[3] = {2, 32, 524288};
 
+    // Go through each training scenario
+    for(int i = 0; i < 3; ++i){
 
-#ifndef APOLLO
-    fprintf(stdout, "numThreads,numRows,time(s)\n");
-#endif
+        int nrows = trainSet[i];
 
-    // We want to re-do runs to average out our time readings
-    for(int visitCount = 1; visitCount <= NUM_REVISITS; visitCount++){
-        // Increase the row counts on each iteration
-        for(int nrows = START_ROWS; nrows <= MAX_ROWS; nrows*=STEP_MULTIPLIER){
-
-    #ifdef APOLLO
+        // Try each policy out
+        for(int j = 0; j < NUM_POLICIES; ++j){
+            
             resetMemory(mat, vec, out, nrows, NCOLS);
 
-            int feature = nrows;
+            //int feature = nrows;
             r->begin();
             //r->setFeature(float(feature));
+            // MUST BE USING THE ROUNDROBIN POLICY FOR THIS TO WORK
             int policy = r->getPolicyIndex();
             //printf("Feature %d Policy %d\n", feature, policy);
 
@@ -165,21 +162,117 @@ int main(int argc, char** argv){
             // Set the thread count according to policy
             omp_set_num_threads(num_threads);
 
-            //#ifdef PAPI_PERF_CNTRS
-            //    PapiHelper* ph = mulMV(mat, vec, out, nrows, NCOLS);
-            //#else
-                // Perform the matrix-vector multiplication
-                mulMV(mat, vec, out, nrows, NCOLS, r);
-            //#endif
+            // Perform the matrix-vector multiplication
+            mulMV(mat, vec, out, nrows, NCOLS, r);
 
             // End the apollo region
             r->end();
-            //goto prematureExit;
-    #endif
 
-    // Here is where we will sweep through all the thread counts
-    // so that we can get a profile of how this program performs
-    #ifndef APOLLO
+        }
+    }
+}
+
+void testRegion(double* mat, double* vec, double* out, Apollo::Region* r){
+
+    int testSet[3] = {4, 64, MAX_ROWS};
+
+    // Go through each training scenario
+    for(int i = 0; i < 3; ++i){
+
+        int nrows = testSet[i];
+
+        // Try each policy out
+        for(int j = 0; j < NUM_POLICIES; ++j){
+            
+            resetMemory(mat, vec, out, nrows, NCOLS);
+
+            //int feature = nrows;
+            r->begin();
+            //r->setFeature(float(feature));
+            // MUST BE USING THE ROUNDROBIN POLICY FOR THIS TO WORK
+            int policy = j; //r->getPolicyIndex();
+            //printf("Feature %d Policy %d\n", feature, policy);
+
+            int num_threads;
+
+            switch(policy){
+                case 0:
+                    num_threads = 1;
+                    break;
+                case 1:
+                    num_threads = 2;
+                    break;
+                case 2:
+                    num_threads = 4;
+                    break;
+                case 3:
+                    num_threads = 8;
+                    break;
+                case 4:
+                    num_threads = MAX_THREADS;
+                    break;
+                default:
+                    num_threads = 1;
+            }
+
+            // Set the thread count according to policy
+            omp_set_num_threads(num_threads);
+
+            // Perform the matrix-vector multiplication
+            mulMV(mat, vec, out, nrows, NCOLS, r);
+
+            // End the apollo region
+            r->end();
+
+            // Get the predicted best policy from this run
+            int predictedBestPolicy = r->queryPolicyModel(r->lastFeats);
+            printf("predicted best policy: [%d], executed with: policy %d, nrows: %d, TOT_INS: %g\n", 
+                   predictedBestPolicy, policy, nrows, r->lastFeats[0]);
+
+        }
+    }
+}
+#endif // end trainRegion and testRegion definitions
+
+int main(int argc, char** argv){
+
+    // Let's allocate memory to start
+    double* mat = (double*) malloc(sizeof(double)*MAX_ROWS*NCOLS);
+    double* vec = (double*) malloc(sizeof(double)*NCOLS);
+    double* out = (double*) malloc(sizeof(double)*MAX_ROWS);
+    throwaway = (double*) malloc(sizeof(double)*THROWAWAY_MEM);
+
+#ifdef APOLLO
+    // Setup Apollo
+    Apollo *apollo = Apollo::instance();
+    Apollo::Region *r = new Apollo::Region(NUM_FEATURES, "test-region", NUM_POLICIES);
+
+    // Repeat the experiements to make sure we are getting 
+    // a decent sample of measurements
+    for(int i = 0; i < 10; ++i){
+        // Gather measurements
+        trainRegion(mat, vec, out, r); 
+    }
+
+    // Build a tree from the measurements
+    apollo->flushAllRegionMeasurements(1);
+
+    // Run the testing set and query the model after each run
+    // to see if the predicted best policy is correct
+    testRegion(mat, vec, out, r); 
+
+    //goto prematureExit;
+#endif
+
+// Here is where we will sweep through all the thread counts
+// so that we can get a profile of how this program performs
+#ifndef APOLLO
+    fprintf(stdout, "numThreads,numRows,time(s)\n");
+
+    // We want to re-do runs to average out our time readings
+    for(int visitCount = 1; visitCount <= NUM_REVISITS; visitCount++){
+        // Increase the row counts on each iteration
+        for(int nrows = START_ROWS; nrows <= MAX_ROWS; nrows*=STEP_MULTIPLIER){
 
             for(int num_threads = 1; num_threads <= 16; num_threads*=2){
                 resetMemory(mat, vec, out, nrows, NCOLS);
@@ -201,21 +294,9 @@ int main(int argc, char** argv){
 
                 fprintf(stdout, "%d, %d, %g\n", num_threads, nrows, duration);
             }
-
-    #endif
-
         } // end of problem-size loop
-
-    #ifdef APOLLO
-        // if we've explored all the problem-size and thread count combinations
-        // let's create the policy decision trees
-        // The integer input is meaningless, so let's fix it at 1
-        if(visitCount == NUM_REVISITS){
-            apollo->flushAllRegionMeasurements(1);
-        }
-    #endif
-
     } // end of revisit loop
+#endif
 
 prematureExit:
 
@@ -228,7 +309,7 @@ prematureExit:
     free(mat);
     free(vec);
     free(out);
-
+    free(throwaway);
 
     return 0;
 }
