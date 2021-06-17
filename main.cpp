@@ -118,10 +118,10 @@ void showResult(double* out, int nrows){
 #ifdef APOLLO
 void trainRegion(double* mat, double* vec, double* out, Apollo::Region* r){
 
-    int trainSet[3] = {2, 32, 524288};
+    int trainSet[6] = {2, 8, 32, 128, 262144, MAX_ROWS};
 
     // Go through each training scenario
-    for(int i = 0; i < 3; ++i){
+    for(int i = 0; i < 6; ++i){
 
         int nrows = trainSet[i];
 
@@ -174,7 +174,7 @@ void trainRegion(double* mat, double* vec, double* out, Apollo::Region* r){
 
 void testRegion(double* mat, double* vec, double* out, Apollo::Region* r){
 
-    int testSet[3] = {4, 64, MAX_ROWS};
+    int testSet[3] = {4, 64, 524288};
 
     // Go through each training scenario
     for(int i = 0; i < 3; ++i){
@@ -226,7 +226,7 @@ void testRegion(double* mat, double* vec, double* out, Apollo::Region* r){
 
             // Get the predicted best policy from this run
             int predictedBestPolicy = r->queryPolicyModel(r->lastFeats);
-            printf("predicted best policy: [%d], executed with: policy %d, nrows: %d, TOT_INS: %g\n", 
+            printf("predicted best policy: [%d], executed with: policy %d, nrows: %d, DP_OPS: %g\n", 
                    predictedBestPolicy, policy, nrows, r->lastFeats[0]);
 
         }
@@ -249,7 +249,7 @@ int main(int argc, char** argv){
 
     // Repeat the experiements to make sure we are getting 
     // a decent sample of measurements
-    for(int i = 0; i < 10; ++i){
+    for(int i = 0; i < 1; ++i){
         // Gather measurements
         trainRegion(mat, vec, out, r); 
     }

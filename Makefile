@@ -1,5 +1,5 @@
 CC = g++
-FLAGS = -fopenmp -std=c++11 -O0 -g #-fno-threadsafe-statics
+FLAGS = -fopenmp -std=c++11 #-O0 -g #-fno-threadsafe-statics
 WORKSPACE_DIR = /g/g15/bolet1/workspace
 
 APOLLO_INCLUDE = ../apollo/include
