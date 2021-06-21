@@ -176,7 +176,7 @@ int main(int argc, char** argv){
     Apollo *apollo = Apollo::instance();
     Apollo::Region *r = new Apollo::Region(
                             NUM_FEATURES, "test-region", NUM_POLICIES, 
-                            {"PAPI_DP_OPS", "PAPI_SP_OPS"}, 1);
+                            {"PAPI_DP_OPS", "PAPI_TOT_INS"}, 1);
 
     // Repeat the experiements to make sure we are getting 
     // a decent sample of measurements
