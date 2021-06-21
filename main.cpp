@@ -104,24 +104,13 @@ void resetMemory(double* mat, double* vec, double* out, int nrows, int ncols){
     return;
 }
 
-void showResult(double* out, int nrows){
-
-    int j;
-
-    fprintf(stdout, "\n[");
-    for(j = 0; j < nrows-1; j++){
-        fprintf(stdout, "%g\t", out[j]);
-    }
-    fprintf(stdout, "%g]\n", out[j]);
-}
-
 #ifdef APOLLO
 void trainRegion(double* mat, double* vec, double* out, Apollo::Region* r){
 
-    int trainSet[6] = {2, 8, 32, 128, 262144, MAX_ROWS};
+    int trainSet[10] = {1, 2, 4, 8, 32, 128, 262144, MAX_ROWS/4, MAX_ROWS/2, MAX_ROWS};
 
     // Go through each training scenario
-    for(int i = 0; i < 6; ++i){
+    for(int i = 0; i < 10; ++i){
 
         int nrows = trainSet[i];
 
@@ -130,9 +119,9 @@ void trainRegion(double* mat, double* vec, double* out, Apollo::Region* r){
             
             resetMemory(mat, vec, out, nrows, NCOLS);
 
-            //int feature = nrows;
+            int feature = nrows;
             r->begin();
-            //r->setFeature(float(feature));
+            r->setFeature(float(feature));
             // MUST BE USING THE ROUNDROBIN POLICY FOR THIS TO WORK
             int policy = r->getPolicyIndex();
             //printf("Feature %d Policy %d\n", feature, policy);
@@ -172,67 +161,7 @@ void trainRegion(double* mat, double* vec, double* out, Apollo::Region* r){
     }
 }
 
-void testRegion(double* mat, double* vec, double* out, Apollo::Region* r){
-
-    int testSet[3] = {4, 64, 524288};
-
-    // Go through each training scenario
-    for(int i = 0; i < 3; ++i){
-
-        int nrows = testSet[i];
-
-        // Try each policy out
-        for(int j = 0; j < NUM_POLICIES; ++j){
-            
-            resetMemory(mat, vec, out, nrows, NCOLS);
-
-            //int feature = nrows;
-            r->begin();
-            //r->setFeature(float(feature));
-            // MUST BE USING THE ROUNDROBIN POLICY FOR THIS TO WORK
-            int policy = j; //r->getPolicyIndex();
-            //printf("Feature %d Policy %d\n", feature, policy);
-
-            int num_threads;
-
-            switch(policy){
-                case 0:
-                    num_threads = 1;
-                    break;
-                case 1:
-                    num_threads = 2;
-                    break;
-                case 2:
-                    num_threads = 4;
-                    break;
-                case 3:
-                    num_threads = 8;
-                    break;
-                case 4:
-                    num_threads = MAX_THREADS;
-                    break;
-                default:
-                    num_threads = 1;
-            }
-
-            // Set the thread count according to policy
-            omp_set_num_threads(num_threads);
-
-            // Perform the matrix-vector multiplication
-            mulMV(mat, vec, out, nrows, NCOLS, r);
-
-            // End the apollo region
-            r->end();
-
-            // Get the predicted best policy from this run
-            int predictedBestPolicy = r->queryPolicyModel(r->lastFeats);
-            printf("predicted best policy: [%d], executed with: policy %d, nrows: %d, DP_OPS: %g\n", 
-                   predictedBestPolicy, policy, nrows, r->lastFeats[0]);
-
-        }
-    }
-}
-#endif // end trainRegion and testRegion definitions
+#endif // end trainRegion definition
 
 int main(int argc, char** argv){
 
@@ -245,7 +174,9 @@ int main(int argc, char** argv){
 #ifdef APOLLO
     // Setup Apollo
     Apollo *apollo = Apollo::instance();
-    Apollo::Region *r = new Apollo::Region(NUM_FEATURES, "test-region", NUM_POLICIES);
+    Apollo::Region *r = new Apollo::Region(
+                            NUM_FEATURES, "test-region", NUM_POLICIES, 
+                            {"PAPI_DP_OPS", "PAPI_SP_OPS"}, 1);
 
     // Repeat the experiements to make sure we are getting 
     // a decent sample of measurements
@@ -257,11 +188,6 @@ int main(int argc, char** argv){
     // Build a tree from the measurements
     apollo->flushAllRegionMeasurements(1);
 
-    // Run the testing set and query the model after each run
-    // to see if the predicted best policy is correct
-    testRegion(mat, vec, out, r); 
-
-    //goto prematureExit;
 #endif
 
 // Here is where we will sweep through all the thread counts
