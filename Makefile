@@ -7,10 +7,10 @@ APOLLO_LIB = ${WORKSPACE_DIR}/apollo/build/src/
 
 all: main mainApollo
 
-main: main.cpp
+main: main.cpp MatVec.cpp
 	${CC} ${FLAGS} $^ -o $@
 
-mainApollo: main.cpp
+mainApollo: main.cpp MatVec.cpp
 	${CC} ${FLAGS} -I${APOLLO_INCLUDE} -L${APOLLO_LIB} \
 				   -Wl,-rpath,${APOLLO_LIB} -DAPOLLO -lapollo \
 				   $^ -o $@

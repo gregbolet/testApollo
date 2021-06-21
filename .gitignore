@@ -4,6 +4,7 @@
 # Keep c/c++ files
 !*.c
 !*.cpp
+!*.hpp
 !*.h
 !Makefile
 !*.sh
