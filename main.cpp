@@ -149,12 +149,12 @@ int main(int argc, char** argv){
     Apollo::Region *r;
 
     if(usePapi){
-        r = new Apollo::Region( NUM_FEATURES, "test-region", 
+        r = new Apollo::Region( NUM_FEATURES, regionName.c_str(), 
                                 NUM_POLICIES, 
                                 counters, isMultiplexed);
     }
     else{
-        r = new Apollo::Region( NUM_FEATURES, "test-region", 
+        r = new Apollo::Region( NUM_FEATURES, regionName.c_str(), 
                                 NUM_POLICIES);
     }
 
