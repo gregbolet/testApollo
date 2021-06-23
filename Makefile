@@ -5,7 +5,7 @@ WORKSPACE_DIR = /g/g15/bolet1/workspace
 APOLLO_INCLUDE = ../apollo/include
 APOLLO_LIB = ${WORKSPACE_DIR}/apollo/build/src/
 
-all: main mainApollo
+all: main mainApollo 
 
 main: main.cpp MatVec.cpp
 	${CC} ${FLAGS} $^ -o $@

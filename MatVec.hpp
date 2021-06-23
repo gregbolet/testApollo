@@ -1,10 +1,8 @@
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 #include <omp.h>
+#include <stdlib.h>
 #include <string>
-#include <chrono>
 
 #ifdef APOLLO
     #include "apollo/Config.h"
@@ -33,11 +31,6 @@
 #define MAX_ROWS 16777216/16
 #define START_ROWS 1
 #define STEP_MULTIPLIER 2
-
-// How many times to repeat the runs
-// This means we will have (51-1)/NUM_POLICIES = 10 measurements
-// for each feature/policy combination
-#define NUM_REVISITS 5
 
 // This will be the memory we go through to 
 // fill the caches that isn't relevant to computation

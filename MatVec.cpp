@@ -51,6 +51,7 @@ void MatVec::resetMemory(){
 // We assume an MxN matrix and Nx1 vector as inputs, and an Mx1 vector as output
 // We vary the value of M from 1 to a large power of two 
 #ifdef APOLLO
+extern int usePapi;
 void MatVec::mulMV(Apollo::Region* r){
 #else
 void MatVec::mulMV(){
@@ -63,8 +64,10 @@ void MatVec::mulMV(){
     #pragma omp parallel 
     { 
 
-    #ifdef APOLLO
-        r->apolloThreadBegin();
+    #ifdef APOLLO 
+        if(usePapi){
+            r->apolloThreadBegin();
+        }
     #endif
 
         // Run our for loop
@@ -75,8 +78,10 @@ void MatVec::mulMV(){
             }
         }
 
-    #ifdef APOLLO
-        r->apolloThreadEnd();
+    #ifdef APOLLO 
+        if(usePapi){
+            r->apolloThreadEnd();
+        }
     #endif
 
     } // end of omp parallel region
