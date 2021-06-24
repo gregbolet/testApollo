@@ -29,6 +29,7 @@ void tryAllPolicies(MatVec* mv, Apollo::Region* r,
 
         //int feature = nrows;
         r->begin();
+
         // Include these features for timing tests only
         r->setFeature(float(nrows));
 

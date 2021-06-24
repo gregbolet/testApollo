@@ -1,4 +1,7 @@
 
+#ifndef MAT_VEC_H 
+#define MAT_VEC_H 
+
 #include <math.h>
 #include <omp.h>
 #include <stdlib.h>
@@ -54,3 +57,5 @@ class MatVec{
 	    double* mat, *vec, *out, *throwaway;
 	    int nrows, ncols;
 };
+
+#endif
