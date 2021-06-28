@@ -170,7 +170,9 @@ int main(int argc, char** argv){
     apollo->flushAllRegionMeasurements(1);
 
     //printf("last feats size: %d\n", r->lastFeats.size());
-    //testRegion(&mv, r); 
+    for(int i = 0; i < numRuns; ++i){
+        testRegion(&mv, r); 
+    }
 
 #endif
 
