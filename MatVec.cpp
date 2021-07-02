@@ -65,9 +65,9 @@ void MatVec::mulMV(){
     { 
 
     #ifdef APOLLO 
-        if(usePapi){
+        //if(usePapi){
             r->apolloThreadBegin();
-        }
+        //}
     #endif
 
         // Run our for loop
@@ -79,9 +79,9 @@ void MatVec::mulMV(){
         }
 
     #ifdef APOLLO 
-        if(usePapi){
+        //if(usePapi){
             r->apolloThreadEnd();
-        }
+        //}
     #endif
 
     } // end of omp parallel region

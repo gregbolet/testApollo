@@ -1,4 +1,4 @@
-CC = g++
+CC = clang++
 FLAGS = -fopenmp -std=c++11 #-O0 -g #-fno-threadsafe-statics
 WORKSPACE_DIR = /g/g15/bolet1/workspace
 

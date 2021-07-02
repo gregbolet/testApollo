@@ -28,10 +28,8 @@ void tryAllPolicies(MatVec* mv, Apollo::Region* r,
         mv->resetMemory();
 
         //int feature = nrows;
-        r->begin();
-
         // Include these features for timing tests only
-        r->setFeature(float(nrows));
+        r->begin({(float) nrows});
 
         // If we're predicting, the getPolicyIndex won't work, so we need will just try all policies
         int policy = (doPredict) ? j : r->getPolicyIndex();
